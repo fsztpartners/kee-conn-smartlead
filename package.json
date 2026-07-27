@@ -1,0 +1,16 @@
+{
+  "name": "kee-conn-smartlead",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "keemakr marketplace connector for Smartlead cold-email campaigns.",
+  "scripts": {
+    "lint": "kee-connector lint",
+    "certify": "kee-connector certify",
+    "pack": "kee-connector pack"
+  },
+  "dependencies": {
+    "@keemakr/operator-sdk": "^0.2.0",
+    "zod": "^4.4.3"
+  }
+}

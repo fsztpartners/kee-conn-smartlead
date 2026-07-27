@@ -1,0 +1,45 @@
+{
+  "kind": "connection",
+  "publisher": "keemakr",
+  "provider": "smartlead",
+  "display_name": "Smartlead",
+  "description": "Cold-email campaigns via Smartlead: list and create campaigns, read campaign analytics, import leads, and inspect sending mailboxes.",
+  "category": "email",
+  "auth_kind": "api_key",
+  "sdk_version": "0.2.0",
+  "entrypoint": "src/index.ts",
+  "allowed_domains": ["server.smartlead.ai"],
+  "data_handling": "Reads campaign metadata, aggregate analytics, and mailbox health from the tenant's Smartlead account; writes campaigns and lead records (names, emails, companies — PII) that the tenant supplies for outreach.",
+  "operations": [
+    {
+      "name": "campaigns.list",
+      "readWrite": "read",
+      "idempotent": true,
+      "description": "List all email campaigns for the connected Smartlead account (id, name, status, schedule)."
+    },
+    {
+      "name": "campaign.create",
+      "readWrite": "write",
+      "idempotent": false,
+      "description": "Create a new (empty) email campaign. Returns Smartlead's raw create-campaign response ({ ok, id, name }). Configure sequence/schedule separately."
+    },
+    {
+      "name": "campaign.analytics",
+      "readWrite": "read",
+      "idempotent": true,
+      "description": "Fetch a campaign's aggregate analytics (sent, opens, replies, bounces, etc.) by campaign id."
+    },
+    {
+      "name": "leads.add",
+      "readWrite": "write",
+      "idempotent": true,
+      "description": "Import leads into a campaign (max 400 per request). Each lead needs an email; other fields and custom_fields feed the template merge tags. Idempotent: Smartlead de-dupes leads already in the campaign."
+    },
+    {
+      "name": "email-accounts.list",
+      "readWrite": "read",
+      "idempotent": true,
+      "description": "List the sending email accounts (mailboxes) connected to the Smartlead account, with warmup + health status."
+    }
+  ]
+}
