@@ -9,7 +9,7 @@
 //     ignore_duplicate_leads_in_campaign setting now 400s if sent.
 //   - The analytics response schema is undocumented — returned as-is (opaque).
 
-import { defineProvider, OperationError } from '@keemakr/operator-sdk';
+import { defineProvider, OperationError, type OperationContext } from '@keemakr/operator-sdk';
 import { z } from 'zod';
 
 const BASE = 'https://server.smartlead.ai/api/v1';
@@ -33,9 +33,7 @@ function opError(status: number, path: string): OperationError {
   return new OperationError(`smartlead answered ${status} on ${path}`, status, 'connector_error');
 }
 
-type Ctx = { fetch: typeof fetch } | undefined;
-
-async function call(ctx: Ctx, apiKey: string, path: string, init?: RequestInit): Promise<unknown> {
+async function call(ctx: OperationContext | undefined, apiKey: string, path: string, init?: RequestInit): Promise<unknown> {
   if (!ctx) throw new OperationError('no execution context', 500, 'connector_error');
   const res = await ctx.fetch(url(path, apiKey), {
     ...init,
