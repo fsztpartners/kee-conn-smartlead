@@ -54,7 +54,7 @@ const leadSchema = z.object({
 });
 
 export const provider = defineProvider({
-  provider: 'smartlead',
+  provider: 'smartlead-api',
   displayName: 'Smartlead',
   authKind: 'api_key',
   category: 'email',

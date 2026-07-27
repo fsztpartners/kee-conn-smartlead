@@ -1,7 +1,7 @@
 {
   "kind": "connection",
   "publisher": "keemakr",
-  "provider": "smartlead",
+  "provider": "smartlead-api",
   "display_name": "Smartlead",
   "description": "Cold-email campaigns via Smartlead: list and create campaigns, read campaign analytics, import leads, and inspect sending mailboxes.",
   "category": "email",
