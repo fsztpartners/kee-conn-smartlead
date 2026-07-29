@@ -43,6 +43,21 @@ async function call(ctx: OperationContext | undefined, apiKey: string, path: str
   return res.json().catch(() => ({}));
 }
 
+// Resolve a campaign id: explicit arg wins; else the connection's meta.campaign_id default
+// (form values are strings; blank/whitespace = unset — same coercion posture as apify-actor's
+// configuredNumber / firecrawl's resolveBase). Neither present → clean input error.
+function resolveCampaignId(arg: unknown, meta: Record<string, unknown>): string {
+  if (arg !== undefined && arg !== null && String(arg).trim() !== '') return String(arg).trim();
+  const m = meta?.campaign_id;
+  if (typeof m === 'string' && m.trim() !== '') return m.trim();
+  if (typeof m === 'number') return String(m);
+  throw new OperationError(
+    'campaign_id is required: pass it in the call or set a Default campaign ID on the Smartlead connection',
+    400,
+    'connector_error',
+  );
+}
+
 const leadSchema = z.object({
   email: z.string().email(),
   first_name: z.string().optional(),
@@ -59,11 +74,34 @@ export const provider = defineProvider({
   publisher: 'keemakr',
   allowedDomains: ['server.smartlead.ai'],
 
-  connectFields: [{ target: 'access_token', label: 'Smartlead API key', secret: true }],
+  // Multi-field connect (SALES-359), same shape as kee-conn-firecrawl (meta.api_base_url) and
+  // kee-conn-apify-actor (meta.* ceilings): optional meta fields ride body.meta on connect and
+  // arrive on every op as cred.meta. Form values are strings; blank = unset (fleet convention).
+  connectFields: [
+    { target: 'access_token', label: 'Smartlead API key', secret: true },
+    {
+      target: 'meta.campaign_id',
+      label: 'Default campaign ID',
+      optional: true,
+      help: "Used when campaign.analytics / leads.add are called without a campaign_id. Leave blank to always pass one per call.",
+    },
+    {
+      target: 'meta.webhook_secret',
+      label: 'Webhook secret',
+      secret: true,
+      optional: true,
+      help: 'Shared secret the sales runtime expects on Smartlead webhook callbacks (?t=). Stored with the connection so it is workspace config, not deployment env.',
+    },
+  ],
 
   // Validate-on-save: the cheapest authenticated read. Bad key → clean {ok:false}.
   async test(cred, ctx) {
-    if (!ctx) return { ok: false, detail: 'no execution context' };
+    if (!cred.accessToken) return { ok: false, detail: 'Smartlead API key is required' };
+    // Connect-validation calls test() with NO ctx, so a missing one is normal, not a
+    // failure: validate on shape and let the first real operation surface a bad key as
+    // auth_revoked. Returning {ok:false} here rejects a perfectly good key at Connect.
+    // (Same fix as kee-conn-firecrawl — this exact branch blocked every Connect attempt.)
+    if (!ctx) return { ok: true };
     try {
       const res = await ctx.fetch(url('/campaigns', cred.accessToken));
       return res.ok ? { ok: true } : { ok: false, detail: `smartlead answered ${res.status}` };
@@ -111,10 +149,11 @@ export const provider = defineProvider({
       description: "Fetch a campaign's aggregate analytics (sent, opens, replies, bounces, etc.) by campaign id.",
       access: 'read',
       idempotent: true,
-      inputSchema: z.object({ campaign_id: z.union([z.string().trim().min(1), z.number()]) }),
+      inputSchema: z.object({ campaign_id: z.union([z.string().trim().min(1), z.number()]).optional() }),
       async call(cred, args, ctx) {
+        const campaignId = resolveCampaignId(args.campaign_id, cred.meta);
         // Response schema is undocumented by Smartlead — passed through opaque.
-        return call(ctx, cred.accessToken, `/campaigns/${encodeURIComponent(String(args.campaign_id))}/analytics`);
+        return call(ctx, cred.accessToken, `/campaigns/${encodeURIComponent(campaignId)}/analytics`);
       },
     },
 
@@ -123,11 +162,11 @@ export const provider = defineProvider({
       access: 'write',
       idempotent: true,
       inputSchema: z.object({
-        campaign_id: z.union([z.string().trim().min(1), z.number()]),
+        campaign_id: z.union([z.string().trim().min(1), z.number()]).optional(),
         lead_list: z.array(leadSchema).min(1).max(400),
       }),
       async call(cred, args, ctx) {
-        return call(ctx, cred.accessToken, `/campaigns/${encodeURIComponent(String(args.campaign_id))}/leads`, {
+        return call(ctx, cred.accessToken, `/campaigns/${encodeURIComponent(resolveCampaignId(args.campaign_id, cred.meta))}/leads`, {
           method: 'POST',
           body: JSON.stringify({
             lead_list: args.lead_list,

@@ -8,7 +8,9 @@
   "auth_kind": "api_key",
   "sdk_version": "0.2.0",
   "entrypoint": "src/index.ts",
-  "allowed_domains": ["server.smartlead.ai"],
+  "allowed_domains": [
+    "server.smartlead.ai"
+  ],
   "data_handling": "Reads campaign metadata, aggregate analytics, and mailbox health from the tenant's Smartlead account; writes campaigns and lead records (names, emails, companies — PII) that the tenant supplies for outreach.",
   "operations": [
     {
@@ -27,13 +29,13 @@
       "name": "campaign.analytics",
       "readWrite": "read",
       "idempotent": true,
-      "description": "Fetch a campaign's aggregate analytics (sent, opens, replies, bounces, etc.) by campaign id."
+      "description": "Fetch a campaign's aggregate analytics (sent, opens, replies, bounces, etc.) by campaign id — or the connection's Default campaign ID when omitted."
     },
     {
       "name": "leads.add",
       "readWrite": "write",
       "idempotent": true,
-      "description": "Import leads into a campaign (max 400 per request). Each lead needs an email; other fields and custom_fields feed the template merge tags. Idempotent: Smartlead de-dupes leads already in the campaign."
+      "description": "Import leads into a campaign (max 400 per request; defaults to the connection's Default campaign ID when campaign_id is omitted). Each lead needs an email; other fields and custom_fields feed the template merge tags. Idempotent: Smartlead de-dupes leads already in the campaign."
     },
     {
       "name": "email-accounts.list",
@@ -41,5 +43,6 @@
       "idempotent": true,
       "description": "List the sending email accounts (mailboxes) connected to the Smartlead account, with warmup + health status."
     }
-  ]
+  ],
+  "changelog": "Multi-field connect (SALES-359): optional meta.campaign_id (default campaign for campaign.analytics / leads.add when the call omits one) and meta.webhook_secret (workspace-held webhook shared secret) alongside the API key. (v4: typecheck fix on the arg narrowing.)"
 }
